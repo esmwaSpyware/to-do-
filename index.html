@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .todo-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .clear-btn {
+            background-color: #ff4444;
+            margin-top: 10px;
+        }
+
+        .clear-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .todo-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            gap: 10px;
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .delete-btn {
+            background-color: #ff4444;
+            margin-left: auto;
+            padding: 4px 8px;
+        }
+
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .priority-high { color: #ff4444; }
+        .priority-medium { color: #ffbb33; }
+        .priority-low { color: #00C851; }
+        .overdue { background-color: #ffebee; }
+    </style>
+</head>
+<body>
+    <div class="todo-container">
+        <h1>To-Do List</h1>
+        <div class="input-container">
+            <input type="text" id="taskInput" placeholder="Enter a new task">
+            <select id="category">
+                <option value="Personal">Personal</option>
+                <option value="Work">Work</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="date" id="dueDate">
+            <select id="priority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+            <button onclick="addTask()">Add Task</button>
+        </div>
+        <ul class="todo-list" id="todoList"></ul>
+        <button class="clear-btn" onclick="clearAllTasks()">Clear All Tasks</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadTasks);
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const category = document.getElementById('category').value;
+            const dueDate = document.getElementById('dueDate').value;
+            const priority = document.getElementById('priority').value;
+            const taskText = taskInput.value.trim();
+
+            if (taskText !== '') {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    completed: false,
+                    category: category,
+                    dueDate: dueDate,
+                    priority: priority,
+                    createdAt: new Date().toISOString()
+                };
+
+                addTaskToDOM(task);
+                saveTask(task);
+                taskInput.value = '';
+                document.getElementById('dueDate').value = '';
+            }
+        }
+
+        function addTaskToDOM(task) {
+            const todoList = document.getElementById('todoList');
+            const li = document.createElement('li');
+            li.className = 'todo-item';
+            li.dataset.id = task.id;
+            if (task.dueDate && !task.completed && new Date(task.dueDate) < new Date()) {
+                li.classList.add('overdue');
+            }
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = task.completed;
+            checkbox.addEventListener('change', () => toggleTask(task.id));
+
+            const taskInfo = document.createElement('span');
+            taskInfo.innerHTML = `
+                ${task.text} 
+                <small>(${task.category} - 
+                Due: ${task.dueDate || 'No date'} - 
+                Priority: <span class="priority-${task.priority}">${task.priority}</span>)</small>
+            `;
+            if (task.completed) {
+                taskInfo.classList.add('completed');
+            }
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.addEventListener('click', () => deleteTask(task.id));
+
+            li.appendChild(checkbox);
+            li.appendChild(taskInfo);
+            li.appendChild(deleteBtn);
+            todoList.appendChild(li);
+        }
+
+        function saveTask(task) {
+            let tasks = getTasks();
+            tasks.push(task);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function getTasks() {
+            return JSON.parse(localStorage.getItem('tasks')) || [];
+        }
+
+        function loadTasks() {
+            const tasks = getTasks();
+            tasks.forEach(task => addTaskToDOM(task));
+        }
+
+        function toggleTask(id) {
+            let tasks = getTasks();
+            tasks = tasks.map(task => {
+                if (task.id === id) {
+                    task.completed = !task.completed;
+                    updateTaskInDOM(task);
+                }
+                return task;
+            });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function updateTaskInDOM(task) {
+            const li = document.querySelector(`[data-id="${task.id}"]`);
+            const taskInfo = li.querySelector('span');
+            taskInfo.className = task.completed ? 'completed' : '';
+            li.classList.toggle('overdue', task.dueDate && !task.completed && new Date(task.dueDate) < new Date());
+        }
+
+        function deleteTask(id) {
+            let tasks = getTasks();
+            tasks = tasks.filter(task => task.id !== id);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            document.querySelector(`[data-id="${id}"]`).remove();
+        }
+
+        function clearAllTasks() {
+            if (confirm('Are you sure you want to delete all tasks?')) {
+                localStorage.removeItem('tasks');
+                document.getElementById('todoList').innerHTML = '';
+            }
+        }
+
+        document.getElementById('taskInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+    </script>
+</body>
+</html>
